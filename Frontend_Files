@@ -1,0 +1,31 @@
+my-app/
+├── app/
+│   ├── layout.jsx               # Root layout (header/footer wrappers)
+│   ├── page.jsx                 # Home page
+│   ├── login/
+│   │   └── page.jsx             # Login page
+│   ├── register/
+│   │   └── page.jsx             # Register page
+│   ├── dashboard/
+│   │   └── page.jsx             # Protected dashboard page
+│   └── doctors/
+│       └── page.jsx             # Doctors listing page
+│
+├── components/
+│   ├── LoginForm.jsx            # Reusable login form
+│   ├── RegisterForm.jsx         # Reusable register form
+│   ├── ProtectedRoute.jsx       # Optional route guard (for client-side protection)
+│   └── Navbar.jsx               # Navigation bar
+│
+├── utils/
+│   └── api.js                   # Axios instance with token interceptor
+│
+├── public/                      # Static assets (images, logos, etc.)
+│
+├── styles/
+│   └── globals.css              # Global styles
+│
+├── .env.local                   # Environment variables (e.g., NEXT_PUBLIC_API_URL)
+├── package.json
+├── next.config.js
+└── README.md
