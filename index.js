@@ -1,6 +1,7 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const cors = require('cors');
+const setupAuthRoutes = require("./routes/authRoutes");
 require('dotenv').config();
 
 const app = express();
@@ -8,11 +9,10 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 
 // MongoDB URI
 const uri = `mongodb+srv://${process.env.db_username}:${process.env.db_password}@cluster0.3wzdkzd.mongodb.net/DocGenie_DB?retryWrites=true&w=majority&appName=Cluster0`;
-
 
 // MongoDB Client
 const client = new MongoClient(uri, {
@@ -26,38 +26,7 @@ const client = new MongoClient(uri, {
 // Declare collections
 let db, Admin, Appointments, Doctors, Medical, Patient;
 
-async function run() {
-  try {
-    if (!client.topology || !client.topology.isConnected()) {
-        await client.connect();
-      }
-      
-    db = client.db('DocGenie_DB');
-    Admin = db.collection('Admin');
-    Appointments = db.collection('Appointments');
-    Doctors = db.collection('Doctors');
-    Medical = db.collection('Medical');
-    Patient = db.collection('Patient');
-
-    console.log("✅ Connected to MongoDB");
-
-  } catch (err) {
-    console.error("❌ MongoDB connection failed:", err);
-  }
-}
-app.get('/Admin', async (req, res) => {
-    try {
-      const result = await Admin.find().toArray();
-      res.status(200).send(result);
-    } catch (err) {
-      console.error("Admin fetch error:", err.message);
-      res.status(500).send({ error: err.message });
-    }
-  });
-  
-run().catch(console.dir);
-
-// 🔄 Generic CRUD functions
+// Generic CRUD setup function
 function setupRoutes(name, collection) {
   // GET all
   app.get(`/${name}`, async (req, res) => {
@@ -105,14 +74,65 @@ function setupRoutes(name, collection) {
   });
 }
 
-// 📌 Set up routes for each collection
-setupRoutes("Admin", Admin);
-setupRoutes("Appointments", Appointments);
-setupRoutes("Doctors", Doctors);
-setupRoutes("Medical", Medical);
-setupRoutes("Patient", Patient);
+// Main function to connect to MongoDB and start routes
+async function run() {
+  try {
+    if (!client.topology || !client.topology.isConnected()) {
+      await client.connect();
+    }
 
-// Root
+    db = client.db('DocGenie_DB');
+    Admin = db.collection('Admin');
+    Appointments = db.collection('Appointments');
+    Doctors = db.collection('Doctors');
+    Medical = db.collection('Medical');
+    Patient = db.collection('Patient');
+
+    console.log("✅ Connected to MongoDB");
+
+    // Set up auth routes (after Patient is defined)
+    setupAuthRoutes(app, Patient);
+
+    // Set up CRUD routes
+    setupRoutes("Admin", Admin);
+    setupRoutes("Appointments", Appointments);
+    setupRoutes("Doctors", Doctors);
+    setupRoutes("Medical", Medical);
+    setupRoutes("Patient", Patient);
+
+    // Custom route: Book appointment with validation
+    app.post('/Appointments/book', async (req, res) => {
+      const { doctorId, patientId, date, time, reason } = req.body;
+
+      if (!doctorId || !patientId || !date || !time) {
+        return res.status(400).send({ error: "Missing required fields" });
+      }
+
+      const appointment = {
+        doctorId: new ObjectId(doctorId),
+        patientId: new ObjectId(patientId),
+        date,
+        time,
+        reason,
+        status: 'Pending'
+      };
+
+      try {
+        const result = await Appointments.insertOne(appointment);
+        res.status(201).send(result);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to book appointment" });
+      }
+    });
+
+  } catch (err) {
+    console.error("❌ MongoDB connection failed:", err);
+  }
+}
+
+run().catch(console.dir);
+
+// Root route
 app.get('/', (req, res) => {
   res.send("Welcome to DocGenie API 🚀");
 });
